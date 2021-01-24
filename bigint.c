@@ -374,32 +374,29 @@ void big_int_mul(big_int* a, big_int* b) {
 	big_int_destroy(result);
 }
 
-void big_int_div(big_int* a, big_int* b) {
-	if (big_int_cmp(a, b) == -1) {
-		big_int* zero = big_int_alloc();
-		big_int_cpy(a, zero);
-		big_int_destroy(zero);
-		return;
-	}
-
-	big_int* count = big_int_alloc();
-	big_int* one = big_int_create(1);
-
-	while (big_int_cmp(a, b) > 0) {
-		big_int_sub(a, b);
-		big_int_add(count, one);
-	}
-
-	big_int_cpy(a, count);
-
-	big_int_destroy(count);
-	big_int_destroy(one);
-}
-
+/**
+ * Return the number of digits in the
+ * number a
+ */
 uint32_t big_int_len(big_int* a) {
 	return a->size - 1;
 }
 
+/**
+ * Compute euclidean division
+ * return a structure containing a pointer
+ * to the quotient and the remainder
+ * both are big int
+ * the algorithm used is the one we can find
+ * in schoolbooks
+ * ex:  	18495 | 43
+ * -43*4 = -172|| |----
+ *       =   129| | 430 <-quotient
+ * -43*3 =  -129|
+ *	     =   0005
+ * -43*0 =     -0
+ *		 =      5 <- reminader
+ */
 big_int_eucl* big_int_eucl_div(big_int* a, big_int* b) {
 	uint32_t n = big_int_len(a);
 	uint32_t m = big_int_len(b);
@@ -417,7 +414,7 @@ big_int_eucl* big_int_eucl_div(big_int* a, big_int* b) {
 		big_int* tmp = big_int_alloc();
 		big_int* one = big_int_create(1);
 
-		while (true) {	// While tmp <= a
+		while (true) {						// While tmp <= a
 			big_int_add(result->q, one);	// 		q += 1
 			big_int_add(tmp, b);			//		tmp += b
 
@@ -440,96 +437,60 @@ big_int_eucl* big_int_eucl_div(big_int* a, big_int* b) {
 		// Allocate a new a
 		// he is dynamic and change with
 		// the following operations
-		big_int* new_a = big_int_alloc();
-		big_int_cpy(new_a, a);
+		big_int* current = big_int_alloc();
 
-		
+		int32_t index = a->size - 1;
+		big_int* next_digit;
+
 		while (true) {
-			// Search for a big enough number to substract b
-			big_int* frame = big_int_frame(new_a, 0, 1);
-			// seq will contain the remaining digits outside the frame
-			big_int* seq = big_int_frame(new_a, 1, new_a->size);
-
-			uint32_t i = 1;
-			while (big_int_cmp(frame, b) <= 0) {	// While frame < b
-				// Extend frame
-				i += 1;
-				
-				// Update it
-				big_int_destroy(frame);
-				frame = big_int_frame(new_a, 0, i);
-			}
-			
-			// Update seq
-			big_int_destroy(seq);
-			seq = big_int_frame(new_a, i, new_a->size);
-
-			// One we found the frame
-			// find the quotient and the remainder
-			// corresponding to frame / b
+			// Add to our current dividend the next digit of A
+			next_digit = big_int_create(a->buffer[index]);
+			big_int_concat(current, next_digit);
+			big_int_destroy(next_digit);
 
 			// We need a temporary q for this division
-			// we will be added to the overall q
+			// it will be added to the overall q
 			big_int* tmp_q = big_int_alloc();
-			big_int* tmp = big_int_alloc();
-			big_int* nxt = big_int_alloc();
+			big_int* next_number = big_int_alloc();
+			
+			// Find the quotient by doing an "stupid" addition loop
 			while (true) {
-				big_int_add(tmp_q, one);		// 		q += 1
-				big_int_add(tmp, b);			//		tmp += b
-
 				// Compute next number to see if we
-				// get higher than frame
-				big_int_cpy(nxt, tmp);
-				big_int_add(nxt, b);
+				// get higher than A
+				big_int_add(next_number, b);
 
 				// if we are, quit
-				if (big_int_cmp(nxt, frame) > 0)
+				if (big_int_cmp(next_number, current) > 0) {
+					big_int_sub(next_number, b);
 					break;
-			}
+				}
 
-			// r = frame % b = frame - (q * b) = frame - tmp
-			big_int_cpy(result->r, frame);
-			big_int_sub(result->r, tmp);
-
-			// If r = 0, add 0 to the quotient
-			printf("q = ");
-			big_int_print(tmp_q);
-			printf("; r = ");
-			big_int_print(result->r);
-			printf("\n");
-
-			if (big_int_cmp(result->r, zero) == 0)
-				big_int_concat(result->q, zero);
+				// Else, add one to the quotient
+				big_int_add(tmp_q, one);		// 		q += 1
+			}			
+			// r = current % b = current - (q * b) = current - next_number
+			big_int_cpy(result->r, current);
+			big_int_sub(result->r, next_number);
 
 			// Concat the new q with the overall quotient
 			big_int_concat(result->q, tmp_q);
 
-			// New a is the remainder + the seq
-			big_int_cpy(new_a, result->r);
-			big_int_concat(new_a, seq);
+			// Current A is the remainder + next digit (will be added during)
+			// the next loop beginning
+			big_int_cpy(current, result->r);
 
 			// Free temporary variables			
 			big_int_destroy(tmp_q);
-			big_int_destroy(tmp);
-			big_int_destroy(nxt);
-			big_int_destroy(frame);
-			big_int_destroy(seq);
+			big_int_destroy(next_number);
 
-			// If our current dividend is > to the divisor
-			// we have nothing left to do
-			if (big_int_cmp(new_a, b) <= 0 && seq->size == 0) {
+			// If we reached the last digit, we quit
+			index -= 1;
+			if (index < 0)
 				break;
-			} else if (big_int_cmp(new_a, b) <= 0 && seq->size > 0) {
-				for (uint32_t i = 0; i < seq->size; i++)
-					big_int_concat(result->q, zero);
-				big_int_cpy(result->r, new_a);
-				break;
-			}
-
 		}
 
 		// Destroy temp variables
-		big_int_destroy(new_a);
+		big_int_destroy(current);
 		big_int_destroy(one);
 		big_int_destroy(zero);
 
