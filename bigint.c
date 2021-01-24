@@ -179,6 +179,14 @@ big_int* big_int_frame(big_int* a, uint32_t start, uint32_t end) {
 }
 
 /**
+ * Return the number of digits in the
+ * number a
+ */
+uint32_t big_int_len(big_int* a) {
+	return a->size - 1;
+}
+
+/**
  * Take the absolute value of a big_int
  */
 void big_int_abs(big_int* a) {
@@ -193,6 +201,11 @@ void big_int_neg(big_int* a) {
 	a->sign = !a->sign;
 }
 
+bool big_int_is_odd(big_int* a) {
+	if (a->buffer[0] % 2)
+		return true;
+	return false;
+}
 /**
  * Compare two big ints
  * Return: -1 if a < b
@@ -231,6 +244,18 @@ int32_t big_int_cmp(big_int* a, big_int* b) {
  * a = a + b
  */
 void big_int_add(big_int* a, big_int* b) {
+	if (a->sign == 0 && b->sign == 1) {
+		big_int_sub(a, b);
+		return;
+	} else if (a->sign == 1 && b->sign == 0) {
+		big_int* tmp = big_int_alloc();
+		big_int_cpy(tmp, b);
+		big_int_sub(tmp, a);
+		big_int_cpy(a, tmp);
+		big_int_destroy(tmp);
+		return;
+	}
+
 	uint8_t c = 0;
 	bool carry = false;
 
@@ -272,6 +297,15 @@ void big_int_add(big_int* a, big_int* b) {
 }
 
 void big_int_sub(big_int* a, big_int* b) {
+	if (a->sign == 0 && b->sign == 1) {
+		big_int* tmp = big_int_alloc();
+		big_int_cpy(tmp, b);
+		big_int_neg(tmp);
+
+		big_int_add(a, b);
+		return;
+	}
+
 	if (big_int_cmp(a, b) == -1) {
 		// if b > a, then a - b = - (b - a)
 		
@@ -375,14 +409,6 @@ void big_int_mul(big_int* a, big_int* b) {
 }
 
 /**
- * Return the number of digits in the
- * number a
- */
-uint32_t big_int_len(big_int* a) {
-	return a->size - 1;
-}
-
-/**
  * Compute euclidean division
  * return a structure containing a pointer
  * to the quotient and the remainder
@@ -415,11 +441,14 @@ big_int_eucl* big_int_eucl_div(big_int* a, big_int* b) {
 		big_int* one = big_int_create(1);
 
 		while (true) {						// While tmp <= a
-			big_int_add(result->q, one);	// 		q += 1
 			big_int_add(tmp, b);			//		tmp += b
 
-			if (big_int_cmp(tmp, a) <= 0)
+			if (big_int_cmp(tmp, a) > 0) {
+				big_int_sub(tmp, b);
 				break;
+			}
+
+			big_int_add(result->q, one);	// 		q += 1
 		}
 
 		big_int_cpy(result->r, a);
@@ -504,6 +533,31 @@ big_int_eucl* big_int_eucl_div(big_int* a, big_int* b) {
 	return NULL;
 }
 
+void big_int_eucl_destroy(big_int_eucl* res) {
+	big_int_destroy(res->q);
+	big_int_destroy(res->r);
+	free(res);
+}
+
+/**
+ * Take the modulo of a % b
+ * a = a % b
+ */
+void big_int_mod(big_int* a, big_int* b) {
+	big_int_eucl* eucl = big_int_eucl_div(a, b);
+	big_int_cpy(a, eucl->r);
+	big_int_eucl_destroy(eucl);
+}
+
+/**
+ * Take the quotient of a / b
+ * a = a / b
+ */
+void big_int_div(big_int* a, big_int* b) {
+	big_int_eucl* eucl = big_int_eucl_div(a, b);
+	big_int_cpy(a, eucl->q);
+	big_int_eucl_destroy(eucl);
+}
 /**
  * Pow the big_int a to the exponent e (32bit uint)
  * a = a ^ e
@@ -517,4 +571,57 @@ void big_int_pow(big_int* a, uint32_t e) {
 	}
 
 	big_int_destroy(tmp);
+}
+
+/**
+ * Fast modular exponentiation
+ * return z = base ^ e (mod mod)
+ */
+big_int* big_int_modexp(big_int* base, big_int* e, big_int* mod) {
+	big_int* zero = big_int_alloc();
+	big_int* one = big_int_create(1);
+	big_int* two = big_int_create(2);
+
+	// Copy parameters because they're going to be modified
+	big_int* r = big_int_alloc();
+	big_int_cpy(r, e);
+	big_int* b = big_int_alloc();
+	big_int_cpy(b, base);
+
+	// Result
+	big_int* z = big_int_create(1);
+
+	while (big_int_cmp(r, zero) != 0) {
+		big_int_eucl* eucl = big_int_eucl_div(r, two);
+
+		if (big_int_cmp(eucl->r, zero) == 0) {
+			// r := r / 2
+			big_int_cpy(r, eucl->q);
+			
+			// a := irem(a ^ 2, p)
+			big_int_mul(b, b);
+			big_int_mod(b, mod);
+		} else {
+			// r := (r - 1) / 2
+			if (big_int_cmp(r, one) == 0) {
+				big_int_cpy(r, zero);
+			} else {
+				big_int_cpy(r, eucl->q);
+			}
+
+			//z := irem(z * a, p)
+			big_int_mul(z, b);
+			big_int_mod(z, mod);
+
+			// a := irem(a ^ 2, p)
+			big_int_mul(b, b);
+			big_int_mod(b, mod);
+		}
+	}
+
+	big_int_destroy(zero);
+	big_int_destroy(one);
+	big_int_destroy(two);
+
+	return z;
 }
