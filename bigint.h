@@ -38,6 +38,8 @@ void big_int_println(big_int* a);
 /* Format function */
 void big_int_reduce(big_int* a);
 void big_int_shift(big_int* a, uint32_t shift);
+void big_int_concat(big_int* a, big_int* b);
+big_int* big_int_frame(big_int* a, uint32_t start, uint32_t end);
 
 /* Math operators */
 void big_int_abs(big_int* a);
@@ -49,5 +51,6 @@ void big_int_mul(big_int* a, big_int* b);
 void big_int_div(big_int* a, big_int* b);
 void big_int_mod(big_int* a, big_int* b);
 void big_int_pow(big_int* a, uint32_t e);
+uint32_t big_int_len(big_int* a);
 big_int* big_int_modexp(big_int* base, uint32_t e, big_int* mod);
 big_int_eucl* big_int_eucl_div(big_int* a, big_int* b);

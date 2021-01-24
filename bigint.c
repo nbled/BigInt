@@ -33,9 +33,9 @@ big_int* big_int_create(int32_t value) {
 		a->buffer = realloc(
 			a->buffer, (i + 1) * UINT_SZ);
 
-		// Split value into list of integers from 0 to 99
-		n = value % 100;
-		value = value / 100;
+		// Split value into list of integers from 0 to 9
+		n = value % 10;
+		value = value / 10;
 
 		// Store last number
 		a->buffer[i] = n;
@@ -64,12 +64,9 @@ big_int* big_int_load(const char* s) {
 	int32_t len = strlen(s);
 	for (int32_t i = len - 1; i >= 0; i--) {
 		uint32_t n = (uint32_t) (s[i] ^ 0x30);
-		if ((i % 2 == 1 && len % 2 == 1) || (i % 2 == 0 && len % 2 == 0)) {
-			n = n * 10;
-		}
 
 		big_int* tmp = big_int_create(n);
-		big_int_shift(tmp, (len - 1 - i) / 2);
+		big_int_shift(tmp, len - 1 - i);
 
 		big_int_add(a, tmp);
 		big_int_destroy(tmp);
@@ -94,30 +91,6 @@ void big_int_cpy(big_int* dst, big_int* src) {
 	dst->size = src->size;
 }
 
-void big_int_concat(big_int* a, big_int* b) {
-	uint32_t n = big_int_len(a);
-	uint32_t m = big_int_len(b);
-
-	// Compute the new buffer size
-	uint32_t new_size = a->size + b->size;
-	if (a->buffer[a->size - 1] < 10 && b->buffer[b->size - 1] < 10)
-		new_size = new_size - 1;
-
-	// Update buffer
-	a->buffer = realloc(
-		a->buffer, new_size);
-	a->size = new_size;
-	
-	// Shift all the elements
-	for (uint32_t i = a->size - 1; i >= 0; i--) {
-		
-	}
-}
-
-big_int* big_int_subb(big_int* a, uint32_t i, uint32_t j) {
-
-}
-
 /**
  * Print a big_int
  */
@@ -129,9 +102,8 @@ void big_int_print(big_int* a) {
 		printf("-");
 
 	// Use different format for leading term to avoid leading zeroes
-	printf("%d", a->buffer[a->size - 1]);
-	for (int32_t i = a->size - 2; i >= 0; i--)
-		printf("%02d", a->buffer[i]);
+	for (int32_t i = a->size - 1; i >= 0; i--)
+		printf("%01d", a->buffer[i]);
 }
 
 /**
@@ -175,6 +147,38 @@ void big_int_shift(big_int* a, uint32_t shift) {
 }
 
 /**
+ * Concatenate two big integers
+ * a = a | b
+ * ex: 18745 | 14 = 1874514
+ */
+void big_int_concat(big_int* a, big_int* b) {
+	// Shift a to make place for b's digits
+	big_int_shift(a, b->size);
+
+	// Copy b's digits into a free place
+	for (int32_t i = b->size - 1; i >= 0; i--)
+		a->buffer[i] = b->buffer[i];
+
+	big_int_reduce(a);
+}
+
+/**
+ * Return a selected piece "frame" of a big int
+ * ex: frame(18745, 0, 2) = 18
+ */
+big_int* big_int_frame(big_int* a, uint32_t start, uint32_t end) {
+	big_int* result = malloc(sizeof(struct big_int));
+	result->size = end - start;
+	result->sign = 0;
+
+	result->buffer = malloc(result->size * UINT_SZ);
+	for (uint32_t i = 0; i < result->size; i++)
+		result->buffer[i] = a->buffer[a->size - end + i];
+
+	return result;
+}
+
+/**
  * Take the absolute value of a big_int
  */
 void big_int_abs(big_int* a) {
@@ -196,12 +200,21 @@ void big_int_neg(big_int* a) {
  * 			0 if a = b
  */ 
 int32_t big_int_cmp(big_int* a, big_int* b) {
+	// Compare signs
+	if (a->sign == 1 && b->sign == 0) {
+		return -1;
+	} else if (a->sign == 0 && b->sign == 1) {
+		return 1;
+	}
+
+	// Compare sizes
 	if (a->size < b->size) {
 		return -1;
 	} else if (a->size > b->size) {
 		return 1;
 	}
 
+	// Compare digit per digit
 	for (int32_t i = a->size - 1; i >= 0; i--) {
 		if (a->buffer[i] < b->buffer[i]) {
 			return -1;
@@ -241,8 +254,8 @@ void big_int_add(big_int* a, big_int* b) {
 		c = left + right + carry;
 
 		carry = false;
-		if (c >= 100) {
-			a->buffer[i] = c - 100;
+		if (c >= 10) {
+			a->buffer[i] = c - 10;
 			carry = true;
 		} else {
 			a->buffer[i] = c;
@@ -305,7 +318,7 @@ void big_int_sub(big_int* a, big_int* b) {
 
 		carry = false;
 		if (c < 0) {
-			a->buffer[i] = 100 + c;
+			a->buffer[i] = 10 + c;
 			carry = true;
 		} else {
 			a->buffer[i] = c;
@@ -338,7 +351,7 @@ void big_int_mul(big_int* a, big_int* b) {
 			// Compute the product of the heading terms
 			c = a->buffer[i] * b->buffer[j];
 
-			// Save it and shift it to the appropriate power of 100
+			// Save it and shift it to the appropriate power of 10
 			tmp = big_int_create(c);
 			big_int_shift(tmp, i + j);
 
@@ -384,7 +397,7 @@ void big_int_div(big_int* a, big_int* b) {
 }
 
 uint32_t big_int_len(big_int* a) {
-	return 2 * (a->size - 1) + (uint32_t) log10(a->buffer[a->size - 1]);
+	return a->size - 1;
 }
 
 big_int_eucl* big_int_eucl_div(big_int* a, big_int* b) {
@@ -392,10 +405,11 @@ big_int_eucl* big_int_eucl_div(big_int* a, big_int* b) {
 	uint32_t m = big_int_len(b);
 
 	big_int_eucl* result = malloc(sizeof(struct big_int_eucl));
+	result->q = big_int_alloc();
+	result->r = big_int_alloc();
+
 	if (n < m) {
 		// if n < m, then a < b, and a/b = 0, a%b = a
-		result->q = big_int_create(0);
-		result->r = big_int_alloc();
 		big_int_cpy(result->r, a);
 		return result;
 	} else if (n == m) {
@@ -403,7 +417,6 @@ big_int_eucl* big_int_eucl_div(big_int* a, big_int* b) {
 		big_int* tmp = big_int_alloc();
 		big_int* one = big_int_create(1);
 
-		result->q = big_int_alloc();
 		while (true) {	// While tmp <= a
 			big_int_add(result->q, one);	// 		q += 1
 			big_int_add(tmp, b);			//		tmp += b
@@ -412,7 +425,6 @@ big_int_eucl* big_int_eucl_div(big_int* a, big_int* b) {
 				break;
 		}
 
-		result->r = big_int_alloc();
 		big_int_cpy(result->r, a);
 		big_int_sub(result->r, tmp);
 
@@ -421,22 +433,114 @@ big_int_eucl* big_int_eucl_div(big_int* a, big_int* b) {
 
 		return result;
 	} else {
-		printf("not implemented\n");
+		// Create a big int to represent 0 & 1
+		big_int* zero = big_int_alloc();
+		big_int* one = big_int_create(1);
+
+		// Allocate a new a
+		// he is dynamic and change with
+		// the following operations
+		big_int* new_a = big_int_alloc();
+		big_int_cpy(new_a, a);
+
+		
+		while (true) {
+			// Search for a big enough number to substract b
+			big_int* frame = big_int_frame(new_a, 0, 1);
+			// seq will contain the remaining digits outside the frame
+			big_int* seq = big_int_frame(new_a, 1, new_a->size);
+
+			uint32_t i = 1;
+			while (big_int_cmp(frame, b) <= 0) {	// While frame < b
+				// Extend frame
+				i += 1;
+				
+				// Update it
+				big_int_destroy(frame);
+				frame = big_int_frame(new_a, 0, i);
+			}
+			
+			// Update seq
+			big_int_destroy(seq);
+			seq = big_int_frame(new_a, i, new_a->size);
+
+			// One we found the frame
+			// find the quotient and the remainder
+			// corresponding to frame / b
+
+			// We need a temporary q for this division
+			// we will be added to the overall q
+			big_int* tmp_q = big_int_alloc();
+			big_int* tmp = big_int_alloc();
+			big_int* nxt = big_int_alloc();
+			while (true) {
+				big_int_add(tmp_q, one);		// 		q += 1
+				big_int_add(tmp, b);			//		tmp += b
+
+				// Compute next number to see if we
+				// get higher than frame
+				big_int_cpy(nxt, tmp);
+				big_int_add(nxt, b);
+
+				// if we are, quit
+				if (big_int_cmp(nxt, frame) > 0)
+					break;
+			}
+
+			// r = frame % b = frame - (q * b) = frame - tmp
+			big_int_cpy(result->r, frame);
+			big_int_sub(result->r, tmp);
+
+			// If r = 0, add 0 to the quotient
+			printf("q = ");
+			big_int_print(tmp_q);
+			printf("; r = ");
+			big_int_print(result->r);
+			printf("\n");
+
+			if (big_int_cmp(result->r, zero) == 0)
+				big_int_concat(result->q, zero);
+
+			// Concat the new q with the overall quotient
+			big_int_concat(result->q, tmp_q);
+
+			// New a is the remainder + the seq
+			big_int_cpy(new_a, result->r);
+			big_int_concat(new_a, seq);
+
+			// Free temporary variables			
+			big_int_destroy(tmp_q);
+			big_int_destroy(tmp);
+			big_int_destroy(nxt);
+			big_int_destroy(frame);
+			big_int_destroy(seq);
+
+			// If our current dividend is > to the divisor
+			// we have nothing left to do
+			if (big_int_cmp(new_a, b) <= 0 && seq->size == 0) {
+				break;
+			} else if (big_int_cmp(new_a, b) <= 0 && seq->size > 0) {
+				for (uint32_t i = 0; i < seq->size; i++)
+					big_int_concat(result->q, zero);
+				big_int_cpy(result->r, new_a);
+				break;
+			}
+
+		}
+
+		// Destroy temp variables
+		big_int_destroy(new_a);
+		big_int_destroy(one);
+		big_int_destroy(zero);
+
+		// Reduce the result
+		big_int_reduce(result->q);
+		big_int_reduce(result->r);
+
 		return result;
 	}
 
 	return NULL;
-}
-
-void big_int_mod(big_int* a, big_int* b) {
-	big_int* tmp = big_int_alloc();
-	big_int_cpy(tmp, a);
-	
-	big_int_div(tmp, b);
-	big_int_mul(tmp, b);
-	big_int_sub(a, tmp);
-
-	big_int_destroy(tmp);
 }
 
 /**
@@ -452,17 +556,4 @@ void big_int_pow(big_int* a, uint32_t e) {
 	}
 
 	big_int_destroy(tmp);
-}
-
-big_int* big_int_modexp(big_int* base, uint32_t e, big_int* mod) {
-	big_int* c = big_int_create(1);
-	if (big_int_cmp(mod, c) == 0)
-		return big_int_alloc();
-
-	for (uint32_t i = 0; i < e; i++) {
-		big_int_mul(c, base);
-		big_int_mod(c, mod);
-	}
-
-	return c;
 }
