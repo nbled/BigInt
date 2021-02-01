@@ -76,6 +76,50 @@ big_int* big_int_load(const char* s) {
 }
 
 /**
+ * Generate an integer from a byte-buffer
+ * big_int_from_buff("\x07\xde") = 2014
+ */
+big_int* big_int_from_buff(const char* buff) {
+	big_int* c = big_int_alloc();
+	big_int* base;
+	big_int* high;
+	big_int* low;
+
+	uint32_t len = strlen(buff);
+	for (uint32_t i = 0; i < len; i++) {
+		// Base 16 exponent
+		base = big_int_create(16);
+		big_int_exp(base, (len - i) * 2 - 1);
+
+		// High byte
+		high = big_int_create((buff[i] & 0xf0) >> 4);
+		big_int_mul(high, base);
+
+		// Add to n
+		big_int_add(c, high);
+		big_int_destroy(base);
+
+		// Regen base 16 exponent 
+		base = big_int_create(16);
+		big_int_exp(base, (len - i) * 2 - 2);
+
+		// Low byte
+		low = big_int_create(buff[i] & 0x0f);
+		big_int_mul(low, base);
+
+		// Add to n
+		big_int_add(c, low);
+		big_int_destroy(base);
+
+		// Free
+		big_int_destroy(high);
+		big_int_destroy(low);
+	}
+
+	return c;
+}
+
+/**
  * Copy the properties of the big_int src into
  * the big_int dst
  */
@@ -176,6 +220,63 @@ big_int* big_int_frame(big_int* a, uint32_t start, uint32_t end) {
 		result->buffer[i] = a->buffer[a->size - end + i];
 
 	return result;
+}
+
+/**
+ * Convert the big int to an hex string
+ */
+char* big_int_to_hex(big_int* a) {
+	char* s = malloc(1);
+	*s = '\0';
+	uint32_t i = 1;
+
+	big_int* base = big_int_create(16);
+	big_int* current = big_int_alloc();
+	big_int_cpy(current, a);
+
+	bool lock = false;
+	while (true) {
+		// Save the quotient
+		big_int_eucl* eucl = big_int_eucl_div(current, base);
+		big_int_cpy(current, eucl->q);
+		i += 1;
+
+		s = realloc(s, i);
+		if (eucl->r->size == 1) {
+			// if size = 1, then r < 10
+			s[i - 2] = 0x30 + eucl->r->buffer[0];
+		} else {
+			// size > 10
+			// We know the remainder is % 16 so we can fit it
+			// in a uint8_t
+			uint8_t n = eucl->r->buffer[1] * 10 + eucl->r->buffer[0];
+			switch (n) {
+				case 10: s[i - 2] = 'a'; break;
+				case 11: s[i - 2] = 'b'; break;
+				case 12: s[i - 2] = 'c'; break;
+				case 13: s[i - 2] = 'd'; break;
+				case 14: s[i - 2] = 'e'; break;
+				default: s[i - 2] = 'f';
+			}
+		}
+
+		s[i - 1] = '\0';
+
+		if (lock)
+			break;
+		if (big_int_cmp(current, base) < 0)
+			lock = true;
+	}
+
+	// Reverse the string
+	uint32_t len = strlen(s);
+	for (uint32_t i = 0; i < len / 2; i++) {
+		char tmp = s[i];
+		s[i] = s[len - i - 1];
+		s[len - i - 1] = tmp;
+	}
+
+	return s;
 }
 
 /**
@@ -562,7 +663,14 @@ void big_int_div(big_int* a, big_int* b) {
  * Pow the big_int a to the exponent e (32bit uint)
  * a = a ^ e
  */
-void big_int_pow(big_int* a, uint32_t e) {
+void big_int_exp(big_int* a, uint32_t e) {
+	if (e == 0) {
+		big_int* one = big_int_create(1);
+		big_int_cpy(a, one);
+		big_int_destroy(one);
+		return;
+	}
+
 	big_int* tmp = big_int_alloc();
 	big_int_cpy(tmp, a);
 
@@ -591,8 +699,9 @@ big_int* big_int_modexp(big_int* base, big_int* e, big_int* mod) {
 	// Result
 	big_int* z = big_int_create(1);
 
+	big_int_eucl* eucl;
 	while (big_int_cmp(r, zero) != 0) {
-		big_int_eucl* eucl = big_int_eucl_div(r, two);
+		eucl = big_int_eucl_div(r, two);
 
 		if (big_int_cmp(eucl->r, zero) == 0) {
 			// r := r / 2
@@ -617,11 +726,16 @@ big_int* big_int_modexp(big_int* base, big_int* e, big_int* mod) {
 			big_int_mul(b, b);
 			big_int_mod(b, mod);
 		}
+
+		big_int_eucl_destroy(eucl);
 	}
 
 	big_int_destroy(zero);
 	big_int_destroy(one);
 	big_int_destroy(two);
+
+	big_int_destroy(r);
+	big_int_destroy(b);
 
 	return z;
 }

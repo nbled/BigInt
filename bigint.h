@@ -26,6 +26,7 @@ typedef struct big_int_eucl big_int_eucl;
 big_int* big_int_alloc();
 big_int* big_int_create(int32_t value);
 big_int* big_int_load(const char* s);
+big_int* big_int_from_buff(const char* buff);
 void big_int_destroy(big_int* a);
 void big_int_eucl_destroy(big_int_eucl* res);
 void big_int_cpy(big_int* dst, big_int* src);
@@ -35,11 +36,12 @@ void big_int_print(big_int* a);
 void big_int_println(big_int* a);
 
 /* Format function */
-uint32_t big_int_len(big_int* a);
 void big_int_reduce(big_int* a);
 void big_int_shift(big_int* a, uint32_t shift);
 void big_int_concat(big_int* a, big_int* b);
 big_int* big_int_frame(big_int* a, uint32_t start, uint32_t end);
+char* big_int_to_hex(big_int* a);
+uint32_t big_int_len(big_int* a);
 
 /* Math operators */
 void big_int_abs(big_int* a);
@@ -51,5 +53,5 @@ void big_int_mul(big_int* a, big_int* b);
 void big_int_div(big_int* a, big_int* b);
 big_int_eucl* big_int_eucl_div(big_int* a, big_int* b);
 void big_int_mod(big_int* a, big_int* b);
-void big_int_pow(big_int* a, uint32_t e);
-void big_int_modexp(big_int* base, big_int* exponent, big_int* mod);
+void big_int_exp(big_int* a, uint32_t e);
+big_int* big_int_modexp(big_int* base, big_int* e, big_int* mod);
