@@ -24,16 +24,16 @@ struct big_int_eucl {
 };
 ```
 
-### Functions
+## Functions
 
-| Category | Prototype | Description |
-| -------- | --------- | ----------- |
+|Category|Prototype|Description|
+|---|---|---|
 | **Memory** | `big_int* big_int_alloc()` | Allocate a memory space to store big integers structure, initialize it to 0 |
 | **Memory** | `big_int* big_int_create(int32_t value)` | Allocate and store a new 32bit integer into a big_int structure |
 | **Memory** | `big_int* big_int_load(const char* s)` | Load a big_int struct from a string |
 | **Memory** | `big_int* big_int_from_buff(const char* buff)` | Generate an integer from a byte-buffer |
 | **Memory** | `void big_int_destroy(big_int* a)` | Un-allocate memory from big_int |
-| **Memory** | `void big_int_eucl_destroy(big_int_eucl* res)` | |
+| **Memory** | `void big_int_eucl_destroy(big_int_eucl* res)` | Un-allocate memory from big_int |
 | **Memory** | `void big_int_cpy(big_int* dst, big_int* src)` | Copy the properties of the big_int src into the big_int dst |
 | **Display** | `void big_int_print(big_int* a)` | Print a big_int |
 | **Display** | `void big_int_println(big_int* a)` | Print a big int and a newline |
