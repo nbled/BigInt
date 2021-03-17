@@ -8,29 +8,45 @@
 #include <stdio.h>
 #include <math.h>
 
+/** Size in bytes of one big_int array cell */
 #define UINT_SZ sizeof(uint8_t)
 
+/** Endianness used for bi_from_buffer */
 #define _BIG_ENDIAN 1
 
+/** Flag if a > b */
 #define BIG_INT_GREATER  1
+/** Flag if a < b */
 #define BIG_INT_SMALLER -1
+/** Flag if a = b */
 #define BIG_INT_EQUAL    0
 
+/** Flag if a big_int is > 0 */
 #define BIG_INT_POSITIVE false
+/** Flag if a big_int is < 0 */
 #define BIG_INT_NEGATIVE true
 
-// Represents a variable size big integer
+/**
+ * Main structure that represents a variable size big integer
+ */
 struct big_int {
-	bool sign;			// number sign, 0 for positive, 1 for negative
-	uint8_t* buffer;	// byte array
-	uint32_t size;		// byte array size
+    /** Sign flag */
+	bool sign;		
+    /** Byte array */
+	uint8_t* buffer;
+    /** Size of the byte array */
+	uint32_t size;
 };
 typedef struct big_int big_int;
 
-// Represents euclidean division result
+/**
+ * Structure that holds the result of an euclidean division
+ */
 struct big_int_eucl {
-    big_int* q; // Quotient
-    big_int* r; // Remainder
+    /** Quotient */
+    big_int* q;
+    /** Remainder */
+    big_int* r;
 };
 typedef struct big_int_eucl big_int_eucl;
 

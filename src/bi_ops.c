@@ -1,8 +1,19 @@
+/**
+ * @file bi_ops.c
+ * @brief Arithmetic operations on big_int
+ * @author Nolan B
+ * @version 1.1
+ * @date 17 march 2021
+ */
+
 #include <bi.h>
 
 /**
- * Flip the big_int sign
+ * @brief Flip the big_int sign
+ * 
  * n = -n
+ *
+ * @param big_int* n : target struct
  */
 void bi_neg(big_int* n) {
     n->sign = !n->sign;
@@ -194,12 +205,17 @@ big_int* __bi_mul_karatsuba(big_int* a, big_int* b) {
 }
 
 /**
- * Compare two big ints
- * Return: -1 if a < b
- *          1 if a > b
- *          0 if a = b
+ * @brief Compare two big ints
+ * 
+ * Return: -1 if a < b (BIG_INT_LOWER)
+ *          1 if a > b (BIG_INT_GREATER)
+ *          0 if a = b (BIG_INT_EQUAL)
  * Complexity: Best case: O(1)
  *             Worst case: O(log a)
+ *
+ * @param big_int* a : first operand
+ * @param big_int* b : second operand
+ * @return comparaison flag
  */ 
 int8_t bi_cmp(big_int* a, big_int* b) {
     // Compare signs
@@ -229,8 +245,13 @@ int8_t bi_cmp(big_int* a, big_int* b) {
 }
 
 /**
- * Add two big_int objects a and b
+ * @brief Add two big_int objects a and b
+ *
  * Complexity: O(log max(a, b))
+ *
+ * @param big_int* a : first operand
+ * @param big_int* b : second operand
+ * @return pointer to the result a + b
  */
 big_int* bi_add(big_int* a, big_int* b) {
     big_int* result = NULL;
@@ -259,8 +280,13 @@ big_int* bi_add(big_int* a, big_int* b) {
 }
 
 /**
- * Substract two big_int objects a and b
+ * @brief Substract two big_int objects a and b
+ *
  * Complexity: O(log max(a, b))
+ *
+ * @param big_int* a : first operand
+ * @param big_int* b : second operand
+ * @return pointer to the result a - b
  */
 big_int* bi_sub(big_int* a, big_int* b) {
     big_int* result = NULL;
@@ -296,8 +322,13 @@ big_int* bi_sub(big_int* a, big_int* b) {
 }
 
 /**
- * Multiply two integers a & b
+ * @brief Multiply two integers a & b
+ *
  * Complexity: O(n^log_3 (2))
+ *
+ * @param big_int* a : first operand
+ * @param big_int* b : second operand
+ * @return pointer to the result a * b
  */
 big_int* bi_mul(big_int* a, big_int* b) {
     // Karatsuba function neglect sign
@@ -312,7 +343,8 @@ big_int* bi_mul(big_int* a, big_int* b) {
 }
 
 /**
- * Compute euclidean division
+ * @brief Compute euclidean division
+ *
  * return a structure containing a pointer
  * to the quotient and the remainder
  * both are big int
@@ -324,7 +356,11 @@ big_int* bi_mul(big_int* a, big_int* b) {
  * -43*3 =  -129|
  *       =   0005
  * -43*0 =     -0
- *       =      5 <- reminader
+ *       =      5 <- remainder
+ *
+ * @param big_int* a : dividend
+ * @param big_int* b : divisor
+ * @return pointer to a big_int_eucl structure
  */
 big_int_eucl* bi_eucl_div(big_int* a, big_int* b) {
     uint32_t n = a->size - 1;
@@ -415,8 +451,10 @@ big_int_eucl* bi_eucl_div(big_int* a, big_int* b) {
 }
 
 /**
- * Compute the quotient of the integer
- * division of a by b
+ * @brief Compute the quotient of the integer, division of a by b
+ * @param big_int* a : dividend
+ * @param big_int* b : divisor
+ * @return pointer to the result a / b
  */
 big_int* bi_div(big_int* a, big_int* b) {
     big_int_eucl* eucl = bi_eucl_div(a, b);
@@ -426,8 +464,10 @@ big_int* bi_div(big_int* a, big_int* b) {
 }
 
 /**
- * Compute the remainder of the integer
- * division of a by b
+ * @brief Compute the remainder of the integer, division of a by b
+ * @param big_int* a : first operand
+ * @param big_int* b : second operand
+ * @return pointer to the result a % b
  */
 big_int* bi_mod(big_int* a, big_int* b) {
     big_int_eucl* eucl = bi_eucl_div(a, b);
@@ -437,8 +477,10 @@ big_int* bi_mod(big_int* a, big_int* b) {
 }
 
 /**
- * Compute b to the power of e
- * using fast exponentation algorithm
+ * @brief Compute b to the power of e using fast exponentation algorithm
+ * @param big_int* b : basis
+ * @param big_int* e : exponent
+ * @return pointer to the result, b ^ e
  */
 big_int* bi_exp(big_int* b, uint32_t e) {
     big_int* result; 
@@ -462,15 +504,20 @@ big_int* bi_exp(big_int* b, uint32_t e) {
 }
 
 /**
- * Check if number is even
+ * @brief Check if number is even
+ * @param big_int* n : target struct
+ * @return true if even, false if odd
  */
 bool bi_is_even(big_int* n) {
     return !(n->buffer[0] & 1);
 }
 
 /**
- * Fast modular exponentiation
- * return result = b ^ e (mod p)
+ * @brief Fast modular exponentiation
+ * @param big_int* b : basis
+ * @param big_int* e : exponent
+ * @param big_int* p : modulo
+ * @return pointer to the result, b ^ e (mod p)
  */
 big_int* bi_modexp(big_int* b, big_int* e, big_int* p) {
     big_int* zero = bi_alloc();

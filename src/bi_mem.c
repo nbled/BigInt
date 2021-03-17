@@ -1,8 +1,19 @@
+/**
+ * @file bi_mem.c
+ * @brief Memory operations on big_int
+ * @author Nolan B
+ * @version 1.1
+ * @date 17 march 2021
+ */
 #include <bi.h>
 
 /**
- * Allocate a memory space to store big integers structure,
+ * @brief Create a big integer in heap
+ *
+ * Allocate a memory space to store big_int structure,
  * initialize it to 0 (positive)
+ *
+ * @return pointer to a big_int struct
  */
 big_int* bi_alloc() {
 	big_int* n = malloc(sizeof(big_int));
@@ -16,8 +27,13 @@ big_int* bi_alloc() {
 }
 
 /**
+ * @brief Create a big integer from int32 value
+ *
  * Allocate and store a new 32bit integer into a 
  * big_int structure
+ *
+ * @param int32_t value : value that'll be put in the struct
+ * @return pointer to a big_int struct
  */
 big_int* bi_create(int32_t value) {
 	// Create a 0 big int
@@ -43,7 +59,8 @@ big_int* bi_create(int32_t value) {
 }
 
 /**
- * Reset a big integer to 0
+ * @brief Reset a big integer to 0
+ * @param big_int* n : pointer to big_int struct that will be reset
  */
 void bi_reset(big_int* n) {
 	n->buffer = realloc(
@@ -54,8 +71,10 @@ void bi_reset(big_int* n) {
 }
 
 /**
- * Generate an integer from a byte-buffer
- * bi_from_buff("\x07\xde") = 2014
+ * @brief Generate an integer from a byte-buffer, bi_from_buff("\x07\xde") = 2014
+ * @param const char* buffer : byte array
+ * @param int32_t size : size of the byte array
+ * @return pointer to a big_int struct
  */
 big_int* bi_from_buffer(const char* buffer, int32_t size) {
 	big_int* n = bi_alloc();
@@ -75,7 +94,9 @@ big_int* bi_from_buffer(const char* buffer, int32_t size) {
 }
 
 /**
- * Return a copy of a big_int object
+ * @brief Return a copy of a big_int object
+ * @param big_int* n : big_int struct to copy
+ * @return pointer to a new big_int struct with the same properties
  */
 big_int* bi_copy(big_int* n) {
 	big_int* result = bi_alloc();
@@ -91,7 +112,9 @@ big_int* bi_copy(big_int* n) {
 }
 
 /**
- * Copy src in dst, and free src
+ * @brief Copy src in dst, and free src
+ * @param big_int* dst : destination struct, will be free'd if allocated
+ * @param big_int* src : source struct, will be free'd after operation
  */
 void bi_move(big_int* dst, big_int* src) {
 	if (dst->buffer != NULL)
@@ -109,7 +132,8 @@ void bi_move(big_int* dst, big_int* src) {
 }
 
 /**
- * Remove leading zeroes in a big_int
+ * @brief Remove leading zeroes uint8_t in a big_int
+ * @param big_int* n : target struct
  */
 void bi_reduce(big_int* n) {
 	int32_t i = n->size - 1;
@@ -121,8 +145,9 @@ void bi_reduce(big_int* n) {
 }
 
 /**
- * Shift the digits to the left
- * equivalent to multiplying by 2**(8 * shift)
+ * @brief Shift the digits to the left, equivalent to multiplying by 2**(8 * shift)
+ * @param big_int* n : target struct
+ * @param uint32_t shift: left shift 
  */
 void bi_lshift(big_int* n, uint32_t shift) {
 	// Do not shift 0
@@ -145,8 +170,9 @@ void bi_lshift(big_int* n, uint32_t shift) {
 }
 
 /**
- * Shift the digits to the right
- * equivalent to dividing by 2**(8 * shift)
+ * @brief Shift the digits to the right, equivalent to dividing by 2**(8 * shift)
+ * @param big_int* n : target struct
+ * @param uint32_t shift : right shift
  */
 void bi_rshift(big_int* n, uint32_t shift) {
 	// Do not shift 0
@@ -168,8 +194,14 @@ void bi_rshift(big_int* n, uint32_t shift) {
 }
 
 /**
- * Return a selected piece "frame" of a big int
+ * @brief Return a selected piece "frame" of a big int
+ *
  * ex: frame(18745, 0, 2) = 18
+ *
+ * @param big_int* n : target struct
+ * @param uint32_t start : beginning of the frame (start on the left side), included
+ * @param uint32_t end : end of the frame
+ * @return the big_int struct extracted
  */
 big_int* bi_frame(big_int* n, uint32_t start, uint32_t end) {
 	big_int* result = bi_alloc();
@@ -186,9 +218,13 @@ big_int* bi_frame(big_int* n, uint32_t start, uint32_t end) {
 }
 
 /**
- * Concatenate two big integers
+ * @brief Concatenate two big integers
+ *
  * a = a | b
  * ex: 0xff | 0xed = 0xffed
+ *
+ * @param big_int* a : LHS structure (will receive the result)
+ * @param big_int* b : RHS structure
  */
 void bi_concat(big_int* a, big_int* b) {
 	// Shift a to make place for b's digits
@@ -200,7 +236,8 @@ void bi_concat(big_int* a, big_int* b) {
 }
 
 /**
- * Destroy a big_int object
+ * @brief Destroy a big_int object
+ * @param big_int* n : target structure
  */
 void bi_destroy(big_int* n) {
 	free(n->buffer);
@@ -208,7 +245,8 @@ void bi_destroy(big_int* n) {
 }
 
 /**
- * Destroy a big_int_eucl object
+ * @brief Destroy a big_int_eucl object
+ * @param big_int_eucl* eucl : target structure
  */
 void bi_eucl_destroy(big_int_eucl* eucl) {
 	bi_destroy(eucl->q);
